@@ -4,6 +4,10 @@ branding:
   icon: 'box'
   color: 'purple'
 inputs:
+  tags:
+    description: "wails build tags"
+    required: false
+    default: ""
   build:
     description: "Platform to build for"
     required: false
