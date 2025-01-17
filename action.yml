@@ -142,7 +142,7 @@ runs:
       shell: bash
     - name: Install macOS Wails deps
       if: runner.os == 'macOS'
-      run: go install github.com/mitchellh/gon/cmd/gon@latest
+      run: go install github.com/mitchellh/gon/cmd/gon@master
       shell: bash
     # Building step
     - name: Build App
