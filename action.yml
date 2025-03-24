@@ -278,6 +278,14 @@ runs:
         done
         
         mv checksums.txt "checksums_$RUNNER_OS.txt"
+    
+    - name: Upload merged checksums
+      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
+      uses: actions/upload-artifact@v4
+      with:
+        name: checksums
+        path: checksums_*.txt
+        retention-days: 1
         
     - name: Download other system checksums
       if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
@@ -302,14 +310,6 @@ runs:
           fi
         done
         
-    - name: Upload merged checksums
-      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-artifact@v4
-      with:
-        name: checksums
-        path: checksums_*.txt
-        retention-days: 1
-
     # Release to GitHub
     - name: Release
       uses: softprops/action-gh-release@v2
