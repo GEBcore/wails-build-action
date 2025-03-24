@@ -253,15 +253,12 @@ runs:
           */bin/
           *\bin\*
           
-    # Calculate checksums for release files
-    - name: Calculate checksums
+    # Calculate and store checksums
+    - name: Calculate and store checksums
       if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
       shell: bash
       run: |
-        echo "## File Checksums" > release_notes.txt
-        echo "" >> release_notes.txt
-        echo "| File | SHA-256 |" >> release_notes.txt
-        echo "|------|---------|" >> release_notes.txt
+        temp_file="temp_checksums_$RUNNER_OS.txt"
         
         if [[ "$RUNNER_OS" == "macOS" ]]; then
           hash_cmd="shasum -a 256"
@@ -273,9 +270,44 @@ runs:
           if [ -f "$file" ]; then
             filename=$(basename "$file")
             checksum=$($hash_cmd "$file" | awk '{print $1}')
-            echo "| $filename | $checksum |" >> release_notes.txt
+            echo "$filename|$checksum" >> "$temp_file"
           fi
         done
+        
+    - name: Download existing checksums
+      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
+      uses: actions/download-artifact@v4
+      with:
+        name: release-checksums
+        path: checksums
+        if-no-files-found: ignore
+        
+    - name: Merge checksums
+      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
+      shell: bash
+      run: |
+        echo "## File Checksums" > release_notes.txt
+        echo "" >> release_notes.txt
+        echo "| File | SHA-256 |" >> release_notes.txt
+        echo "|------|---------|" >> release_notes.txt
+        
+        for checksum_file in checksums/*.txt temp_checksums_*.txt; do
+          if [ -f "$checksum_file" ]; then
+            while IFS='|' read -r filename checksum || [ -n "$filename" ]; do
+              if [ -n "$filename" ] && [ -n "$checksum" ]; then
+                echo "| $filename | $checksum |" >> release_notes.txt
+              fi
+            done < "$checksum_file"
+          fi
+        done
+            
+    - name: Upload merged checksums
+      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-checksums
+        path: checksums/*.txt temp_checksums_*.txt
+        retention-days: 1
         
     # Release to GitHub
     - name: Release
