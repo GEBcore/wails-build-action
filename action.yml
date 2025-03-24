@@ -252,6 +252,36 @@ runs:
         path: |
           */bin/
           *\bin\*
+          
+    # Calculate checksums for release files
+    - name: Calculate checksums
+      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
+      shell: bash
+      run: |
+        echo "## File Checksums" > checksums.txt
+        echo "" >> checksums.txt
+        echo "| File | SHA-256 |" >> checksums.txt
+        echo "|------|---------|" >> checksums.txt
+        
+        for file in */bin/*; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            checksum=$(sha256sum "$file" | awk '{print $1}')
+            echo "| $filename | $checksum |" >> checksums.txt
+          fi
+        done
+        
+        # Combine with existing release notes if they exist
+        if [ -f "release_notes.txt" ]; then
+          cat release_notes.txt > combined_notes.txt
+          echo "" >> combined_notes.txt
+          cat checksums.txt >> combined_notes.txt
+          mv combined_notes.txt release_notes.txt
+        else
+          mv checksums.txt release_notes.txt
+        fi
+          
+    # Release to GitHub
     - name: Release
       uses: softprops/action-gh-release@v2
       if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
@@ -259,3 +289,4 @@ runs:
         prerelease: ${{inputs.prerelease}}
         files: |
           */bin/*
+        body_path: release_notes.txt
