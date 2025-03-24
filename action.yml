@@ -263,24 +263,53 @@ runs:
         echo "| File | SHA-256 |" >> checksums.txt
         echo "|------|---------|" >> checksums.txt
         
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          hash_cmd="shasum -a 256"
+        else
+          hash_cmd="sha256sum"
+        fi
+        
         for file in */bin/*; do
           if [ -f "$file" ]; then
             filename=$(basename "$file")
-            checksum=$(sha256sum "$file" | awk '{print $1}')
+            checksum=$($hash_cmd "$file" | awk '{print $1}')
             echo "| $filename | $checksum |" >> checksums.txt
           fi
         done
         
-        # Combine with existing release notes if they exist
-        if [ -f "release_notes.txt" ]; then
-          cat release_notes.txt > combined_notes.txt
-          echo "" >> combined_notes.txt
-          cat checksums.txt >> combined_notes.txt
-          mv combined_notes.txt release_notes.txt
-        else
-          mv checksums.txt release_notes.txt
-        fi
-          
+        mv checksums.txt "checksums_$RUNNER_OS.txt"
+        
+    - name: Download other system checksums
+      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
+      uses: actions/download-artifact@v4
+      with:
+        name: checksums
+        path: checksums
+        if-no-files-found: ignore
+            
+    - name: Merge checksums
+      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
+      shell: bash
+      run: |
+        echo "## File Checksums" > release_notes.txt
+        echo "" >> release_notes.txt
+        echo "| File | SHA-256 |" >> release_notes.txt
+        echo "|------|---------|" >> release_notes.txt
+        
+        for checksum_file in checksums_*.txt; do
+          if [ -f "$checksum_file" ]; then
+            grep -v "^| File \|" "$checksum_file" | grep -v "^|------\|" >> release_notes.txt
+          fi
+        done
+        
+    - name: Upload merged checksums
+      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
+      uses: actions/upload-artifact@v4
+      with:
+        name: checksums
+        path: checksums_*.txt
+        retention-days: 1
+
     # Release to GitHub
     - name: Release
       uses: softprops/action-gh-release@v2
