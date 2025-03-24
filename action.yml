@@ -258,10 +258,10 @@ runs:
       if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
       shell: bash
       run: |
-        echo "## File Checksums" > "checksums_$RUNNER_OS.txt"
-        echo "" >> "checksums_$RUNNER_OS.txt"
-        echo "| File | SHA-256 |" >> "checksums_$RUNNER_OS.txt"
-        echo "|------|---------|" >> "checksums_$RUNNER_OS.txt"
+        echo "## File Checksums" > release_notes.txt
+        echo "" >> release_notes.txt
+        echo "| File | SHA-256 |" >> release_notes.txt
+        echo "|------|---------|" >> release_notes.txt
         
         if [[ "$RUNNER_OS" == "macOS" ]]; then
           hash_cmd="shasum -a 256"
@@ -273,51 +273,9 @@ runs:
           if [ -f "$file" ]; then
             filename=$(basename "$file")
             checksum=$($hash_cmd "$file" | awk '{print $1}')
-            echo "| $filename | $checksum |" >> "checksums_$RUNNER_OS.txt"
+            echo "| $filename | $checksum |" >> release_notes.txt
           fi
         done
-    
-    - name: Upload checksums
-      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-artifact@v4
-      with:
-        name: checksums
-        path: checksums_*.txt
-        retention-days: 1
-        
-    - name: Download other system checksums
-      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
-      uses: actions/download-artifact@v4
-      with:
-        name: checksums
-        path: checksums
-        if-no-files-found: ignore
-            
-    - name: Merge checksums
-      if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
-      shell: bash
-      run: |
-        echo "## File Checksums" > release_notes.txt
-        echo "" >> release_notes.txt
-        echo "| File | SHA-256 |" >> release_notes.txt
-        echo "|------|---------|" >> release_notes.txt
-        
-        # 合并所有系统的哈希值文件
-        if [ -d "checksums" ]; then
-          for checksum_file in checksums/checksums_*.txt checksums_*.txt; do
-            if [ -f "$checksum_file" ]; then
-              # 跳过表头行
-              grep -v "^| File \|" "$checksum_file" | grep -v "^|------\|" >> release_notes.txt
-            fi
-          done
-        else
-          for checksum_file in checksums_*.txt; do
-            if [ -f "$checksum_file" ]; then
-              # 跳过表头行
-              grep -v "^| File \|" "$checksum_file" | grep -v "^|------\|" >> release_notes.txt
-            fi
-          done
-        fi
         
     # Release to GitHub
     - name: Release
