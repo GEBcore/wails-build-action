@@ -312,6 +312,7 @@ runs:
         name: release-checksums
         path: checksums
         retention-days: 1
+        overwrite: true
         
     # Release to GitHub
     - name: Release
