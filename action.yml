@@ -286,12 +286,16 @@ runs:
       if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
       shell: bash
       run: |
+        mkdir -p checksums
+        
+        mv temp_checksums_*.txt checksums/ 2>/dev/null || true
+        
         echo "## File Checksums" > release_notes.txt
         echo "" >> release_notes.txt
         echo "| File | SHA-256 |" >> release_notes.txt
         echo "|------|---------|" >> release_notes.txt
         
-        for checksum_file in checksums/*.txt temp_checksums_*.txt; do
+        for checksum_file in checksums/*.txt; do
           if [ -f "$checksum_file" ]; then
             while IFS='|' read -r filename checksum || [ -n "$filename" ]; do
               if [ -n "$filename" ] && [ -n "$checksum" ]; then
@@ -300,13 +304,13 @@ runs:
             done < "$checksum_file"
           fi
         done
-            
+        
     - name: Upload merged checksums
       if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
       uses: actions/upload-artifact@v4
       with:
         name: release-checksums
-        path: checksums/*.txt temp_checksums_*.txt
+        path: checksums
         retention-days: 1
         
     # Release to GitHub
