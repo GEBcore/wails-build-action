@@ -280,7 +280,7 @@ runs:
       with:
         name: release-checksums
         path: checksums
-        if-no-files-found: ignore
+      continue-on-error: true
         
     - name: Merge checksums
       if: inputs.package == 'true' && startsWith(github.ref, 'refs/tags/')
